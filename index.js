@@ -1,11 +1,15 @@
 const mysql = require('mysql');
 const express = require('express');
+const cors = require('cors')
 const app = express();
 const bodyParser = require('body-parser');
 app.use(bodyParser.json());
+app.use(cors())
+const {OAuth2Client} = require('google-auth-library');
 
 const port = process.env.PORT || 8080;
-
+const CLIENT_ID = '735423714813-lu86p7bdssuc841bp9h1cctt996pf49t.apps.googleusercontent.com';
+const client = new OAuth2Client(CLIENT_ID); //to identify the right client from where the request is coming
 app.listen(port,() => {
     console.log('REST API listening on port ', port);
 });
@@ -15,9 +19,15 @@ app.get('/', async (req, res) => {
   });
 
 app.get('/:id', async (req,res) => {
-    const id = parseInt(req.params.id);
+    const userId = await getUserId(req.headers['authorization']);
+    if (hasAccess(userId)){
+        const id = parseInt(req.params.id);
     const dessert = await getDessert(id); // function to get dessert from SQL
-    res.json({status:'success', data:{dessert:dessert}});
+    res.status(200).json({status:'success', data:{dessert:dessert}});
+    } else {
+        res.sendStatus(403);
+    }
+    
 });
 
 app.post('/', async(req, res) => {
@@ -55,5 +65,28 @@ async function getDessert(id){
      getDBPool().query(sql, [id], (err, results) => {
          resolve(results[0]);
      })   
-    });
+    });    
+}
+
+async function getUserId(authorizationHeader) {
+    try {
+        const userJwtToken = authorizationHeader.replace('Bearer ','');
+        const ticket = await client.verifyIdToken({
+            idToken: userJwtToken,
+            audience: CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        const userId = payload['sub'] || payload['hd']; 
+        return userId;           
+    }
+    catch (ex) {
+        console.error(ex);
+        return '';
+    }
+}
+
+function hasAccess(userId) {
+    const userIds = ['104308542447035482453'];
+    return userIds.includes(userId);
+
 }
