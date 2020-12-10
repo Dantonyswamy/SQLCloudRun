@@ -69,6 +69,7 @@ async function getDessert(id){
 }
 
 async function getUserId(authorizationHeader) {
+    console.log(authorizationHeader)
     try {
         const userJwtToken = authorizationHeader.replace('Bearer ','');
         const ticket = await client.verifyIdToken({
@@ -86,7 +87,7 @@ async function getUserId(authorizationHeader) {
 }
 
 function hasAccess(userId) {
-    const userIds = ['104308542447035482453'];
+    const userIds = [`${process.env.USER}`];
     return userIds.includes(userId);
 
 }
